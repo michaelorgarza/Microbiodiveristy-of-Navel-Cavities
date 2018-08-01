@@ -1,101 +1,135 @@
 function buildMetadata(sample) {
+   // sample metadata panel
+   d3.json("/metadata/" + sample, function(error, response){
+    if (error) return console.warn(error);
 
-  // @TODO: Complete the following function that builds the metadata panel
+    // get list of keys from response
+    var responseKeys = Object.keys(response);
 
-  // Use `d3.json` to fetch the metadata for a sample
-    // Use d3 to select the panel with id of `#sample-metadata`
+    // identify correct div
+    var $sampleInfoPanel = document.querySelector("#sample-metadata");
+   
+    // reset HTML to be nothing
+    $sampleInfoPanel.innerHTML = null;
 
-    // Use `.html("") to clear any existing metadata
+    // loop through response keys and create a P element for each including
+    // response key and value
+    for (var i=0; i<responseKeys.length; i++){
+        var $dataPoint = document.createElement('p');
+        $dataPoint.innerHTML = responseKeys[i] + ": " + response[responseKeys[i]];
+        $sampleInfoPanel.appendChild($dataPoint)
+    };
 
-    // Use `Object.entries` to add each key and value pair to the panel
-    // Hint: Inside the loop, you will need to use d3 to append new
-    // tags for each key-value in the metadata.
+  });
 
-    // BONUS: Build the Gauge Chart
-    // buildGauge(data.WFREQ);
-    var url = `/sample/${sample}`;
-    Plotly.d3.json(url,function(error,response){
-      if(error){
-          return console.warn(error);
-      }
-      populateBackground(response['personal']);
-      populatePieChart(response['otu_distribution']);
-      populateBubbleChart(response['otu_sample']);
-      console.log(response);
-    })
 }
 
 function buildCharts(sample) {
-  function populateBubbleChart(otu_sample_data){
-    console.log("tryyyyyyyyyyyyyyyyyyy bubble");
-    console.log("test - > ",otu_sample_data['y'])
-    console.log(d3.min(otu_sample_data['y']));
-    console.log(d3.max(otu_sample_data['y']));
-  
-    var radiusScale = d3.scaleSqrt();
-  
-    radiusScale.range([0,100]);
-  
-    var rMin;
-    var rMax;
-    rMin = d3.min(otu_sample_data['y']);
-    rMax = d3.max(otu_sample_data['y']);
-  
-    radiusScale.domain([rMin,rMax]);
-  
-    console.log("Radius ->",otu_sample_data['y'].map(d=>radiusScale(parseInt(d))))
+
+    // pie chart
+    //  get response for default sample
+  d3.json("/samples/" + sample, function(error, sampleResponse){
+
+    if (error) return console.warn(error);
+    console.log(sampleResponse)
       
-      var data = [{
-        y:otu_sample_data['y'].map(d=>d),
-        'mode':'markers',
-        'marker':{
-            size: otu_sample_data['y'].map(d=>radiusScale(parseInt(d))),
-            color: otu_sample_data['y'].map(d=>d)
-                  }
-      }];
-  
-      console.log(data);
-      
+      // parse repsonse data and take sice of first ten
+      // data returnes sorted from schalchemy/flask
+    resLabels = sampleResponse[0]["otu_ids"].slice(0,10)
+    resValues = sampleResponse[1]["sample_values"].slice(0,10)
+
+    for (var i=0; i<10; i++){
+      if (resLabels[i] == 0){
+        resLabels = resLabels.slice(0,i)
+        }
+      if (resValues[i] == 0){
+          resValues[i] = resValues.slice(0,i)
+          }
+      }
+      // console.log(resLabels)
+      // console.log(resValues)
+
+      // get matching decriptions for the top ten bacteria and create a list
+      d3.json("/otu_descriptions", function(error, response){
+        if (error) return console.warn(error);
+
+        console.log(response)
+        var bacteriaNamesPie = []
+        for (var i=0; i< resLabels.length; i++){
+          bacteriaNamesPie.push(response[resLabels[i]])
+          }
+          // console.log(bacteriaNames)
+          
+          //  list of names for Bubble Chart
+        var bacteriaNamesBub = []
+        for (var i =0; i<sampleResponse[0]["otu_ids"].length; i++){
+          bacteriaNamesBub.push(response[sampleResponse[0]["otu_ids"][i]])
+          }
+        console.log(bacteriaNamesBub)
+
+          // set up data for pie chart
+        var data = [{
+        values: resValues,
+        labels: resLabels,
+        hovertext: bacteriaNamesPie,
+        hoverinfo: {bordercolor: 'black'},
+        type: 'pie'
+        }];
+
+      //   set up layout for plot
+
       var layout = {
-        title: 'Germs in the sample',
-        xaxis: {
-            title: "OTUs"
+                  // width: 675,
+                  margin: 
+                  {
+                      top: 10,
+                      bottom: 10,
+                      right: 10,
+                      left: 10
+                  },
+                  height: 500,
+                  title: "Top Sample Counts for " + sample
+                };
+      // plot default value
+      Plotly.newPlot('piePlot', data, layout);
+
+    console.log(sampleResponse);
+      //    bubble plot       
+    var trace1 = {
+          x: sampleResponse[0]["otu_ids"],
+          y: sampleResponse[1]["sample_values"],
+          mode: 'markers',
+          marker: {
+              colorscale: 'Earth',
+              color: sampleResponse[0]["otu_ids"],
+              size: sampleResponse[1]["sample_values"]
           },
-          yaxis: {
-            title: "Intensity found in sample"
-          },
-      };
+          text: bacteriaNamesBub,
+          type: "scatter"
+        };
+        
+    var bubData = [trace1];
+        
+    var bubLayout = {
+          title: 'Sample Values for ' + sample,
+          hovermode: 'closest',
+          showlegend: false,
+          height: 600,
+          // width: 1200
+          margin: 
+              {
+                  top: 10,
+                  bottom: 10,
+                  right: 10,
+                  left: 10
+              }
   
-      var bubbleDiv = document.querySelector('.otu-sample-bubble');
-      
-      Plotly.newPlot(bubbleDiv, data, layout);
-      
-  }
-  function populatePieChart(sample_otu_distribution){
-    console.log("Pie chart data");
-    sample_otu_distribution["type"] = "pie";
-    console.log(sample_otu_distribution);
+        };
+        
+    Plotly.newPlot('bubblePlot', bubData, bubLayout);
+      });
   
-    var pieDiv = document.querySelector(".germs-pie")
-  
-    var data = [sample_otu_distribution];
-    var layout = {
-        height: 400,
-        width: 500,
-        title: "Top 10 Operational Taxonomic Units <br> (OTU) found in this sample"
-      };
-      
-    Plotly.newPlot(pieDiv,data,layout);
-  }
-
-  // @TODO: Use `d3.json` to fetch the sample data for the plots
-
-    // @TODO: Build a Bubble Chart using the sample data
-
-    // @TODO: Build a Pie Chart
-    // HINT: You will need to use slice() to grab the top 10 sample_values,
-    // otu_ids, and labels (10 each).
-   
+  });
 }
 
 function init() {
