@@ -8,16 +8,17 @@ import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
+from sqlalchemy.orm import load_only
+from sqlalchemy import func, desc
 
 from flask import Flask, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///StarterCode/Belly_Button_Biodiversity/db/belly_button_biodiversity.sqlite"
-db = SQLAlchemy(app)
+engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite")
 Base = automap_base()
-Base.prepare(db.engine, reflect=True)
+Base.prepare(engine, reflect=True)
 
 
 Base.classes.keys()
@@ -28,49 +29,40 @@ Otu = Base.classes.otu
 
 session = Session(engine)
 
+
 ####################################
 
-def idCollector (sample_id):
-    id = [sample_id]
-    results = session.query(Samples).options(load_only(sample_id)).order_by(desc(sample_id))
+def idCollectorPC():
+    all_otus = session.query(Otu).statement
+    all_otus_df = pd.read_sql_query(all_otus, session.bind)
+    all_otus_df.set_index('otu_id', inplace=True)
     
-    collector = []
-    names = []
-    values = []
-    
-    for result in results[:10]:
-        row = result.__dict__    
-        names.append(f"Otu - {row['otu_id']}")
-        values.append(row[f"{sample_id}"])
-    
-    values = [round((x/sum(values))*100,2) for x in values]
-        
-    return {
-        'Name':names,
-        'values':values
-    }
+    return jsonify(list(all_otus_df["lowest_taxonomic_unit_found"]))
+
 # function is functioning
 
 ####################################
 
-def infoCollector(sample_id):
-    info_id = sample_id[3:]
-    results = session.query(Samples_Metadata).filter(Samples_Metadata.SAMPLEID == info_id).first()
+def subjectCollectorBG(sample_number):
+    """returns backgroup info on subjects"""
+    sample_id = sample_number[3:]
+    results = session.query(Samples_Metadata).filter(Samples_Metadata.SAMPLEID == sample_id).all()
     
     print(results)
     
     return {
-        'age':results.AGE,
-        'gender':results.GENDER,
-        'ethnicity':results.ETHNICITY,
-        'location':results.LOCATION,
-        'source':results.EVENT
+        'age':results[3:],
+        'gender':results[2:],
+        'ethnicity':results[1:],
+        'location':results[4:],
+        'source':results[5:]
     }
 # function is functioning
 
 ####################################
 
-def OtuCollector():
+def OtuCollectorBC():
+    """pulls info for bubble chart"""
     results = session.query(Samples).all()
     x = []
     y = []
@@ -89,7 +81,7 @@ def OtuCollector():
 
 ####################################
 
-def idList():
+def idListN():
     columns = Samples.__table__.columns.keys()
     return columns[1:]
 # function is functioning
