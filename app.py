@@ -2,13 +2,15 @@ import os
 
 import pandas as pd
 import numpy as np
-import biofunctions
+from biofunctions import SampleNamesCollector, OTUbySamplesCollector, SampleMetaDataCollector, idCollectorPC
 
 
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
+from sqlalchemy import desc
+from sqlalchemy.orm import load_only
 
 from flask import Flask, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -34,25 +36,30 @@ def index():
     return render_template("index.html")
 
 @app.route("/names")
-def names():
-    data = biofunctions.idListN()
-    return jsonify(data)
+def sampleNames():
+    sampleNames = SampleNamesCollector()
+    return (sampleNames)
 
-@app.route("/metadata/<sample_number>")
-def metadata(sample_number):
-    data = biofunctions.subjectCollectorBG(sample_number)
-    return jsonify(data)
+@app.route("/metadata/<sample_id>")
+def metaDataSample(sample_id):
+    meta = SampleMetaDataCollector(sample_id)
+    return jsonify(meta)
 
 @app.route("/otu")
 def otu():
-    data = biofunctions.idCollectorPC()
+    data = idCollectorPC()
     return(data)
 
-@app.route("/samples")
-def samples():
-   data = biofunctions.OtuCollectorBC()
-   return jsonify(data)
+@app.route("/samples/<sample>")
+def check(sample):
+    data = OTUbySamplesCollector(sample)
+    return(data)
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+# @app.route("/samples/<sample>")
+# def samples(sample):
+#     data = biofunctions.PieChart(sample)
+#     return(data)
 
