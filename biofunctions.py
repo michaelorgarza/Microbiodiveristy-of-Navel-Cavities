@@ -97,44 +97,26 @@ def SampleNamesCollector():
 ####################################
 
 def OTUbySamplesCollector(sample):
-    # assign the db's uniform resource identifier to a variable
-    db_uri = 'sqlite:///db/belly_button_biodiversity.sqlite'
+    fields = [sample]
+    results = session.query(Samples).options(load_only(sample)).order_by(desc(sample))
+    
+    collector = []
+    names = []
+    values = []
+    
+    for result in results[:10]:
+        row = result.__dict__    
+        names.append(f"Otu - {row['otu_id']}")
+        values.append(row[f"{sample}"])
+    
+    values = [round((x/sum(values))*100,2) for x in values]
+        
+    return {
+        'Name':names,
+        'values':values
+    }
 
-    #connect to the db using create_engine():
-    from sqlalchemy import create_engine
-    # returned value engine represents the core interface to the database
-    engine = create_engine(db_uri,echo=False)
-
-    # Declare a Base using `automap_base()`
-    from sqlalchemy.ext.automap import automap_base
-    Base = automap_base()
-
-    # Use the Base class to reflect the database tables
-    Base.prepare(engine, reflect=True)
-
-    # mapped classes are now created with names by default
-    # matching that of the table name.
-    Otu = Base.classes.otu
-    Samples = Base.classes.samples
-    Samples_Metadata = Base.classes.samples_metadata
-
-    # Create a session
-    from sqlalchemy.orm import Session
-    session = Session(engine)
-
-    # initialize an empty list to store the sample table
-    otuIDbySample = []
-
-    for row in session.query(Samples).all():
-        otuIDbySample.append(row.__dict__)
-
-    import pandas as pd
-    otuIDbySample = pd.DataFrame.from_dict(otuIDbySample, orient='columns', dtype=None)
-
-    otuIDbySample = otuIDbySample[sample].sort_values(ascending=False)[:10].reset_index()
-    otuIDbySample.columns =["otu_ids","sample_values"]
-
-    return otuIDbySample.to_json(orient='columns')
+  
 
 
 
