@@ -58,7 +58,7 @@ def washingCollector(sample):
     sample_name = int(sample.split("_")[1])
     selected_sample = samples_meta_df.loc[samples_meta_df["SAMPLEID"] == sample_name, :]
     wfreq = selected_sample["WFREQ"].values[0]
-    return f"{wfreq}"
+    return wfreq
 
 def sampleCollector(sample):
     """ returns sample info """
