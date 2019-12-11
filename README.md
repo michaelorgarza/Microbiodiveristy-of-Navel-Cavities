@@ -73,3 +73,6 @@ Uses Plotly.js to build interactive charts for dashboard.
 
 ![Example Dashboard Page](Images/dashboard_part1.png)
 ![Example Dashboard Page](Images/dashboard_part2.png)
+
+### Author
+* **Michael Garza**
